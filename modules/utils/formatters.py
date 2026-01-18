@@ -258,10 +258,10 @@ def format_node_details(node):
 
     # Enhanced Status Information
     message += f"📊 *Статус сервера*:\n"
-    message += f"  • Подключен: {'✅' if node['isConnected'] else '❌'}\n"
-    message += f"  • Отключен: {'✅' if node['isDisabled'] else '❌'}\n"
-    message += f"  • Онлайн: {'✅' if node['isNodeOnline'] else '❌'}\n"
-    message += f"  • Xray запущен: {'✅' if node['isXrayRunning'] else '❌'}\n"
+    message += f"  • Подключен: {'✅' if node.get('isConnected', False) else '❌'}\n"
+    message += f"  • Отключен: {'✅' if node.get('isDisabled', False) else '❌'}\n"
+    message += f"  • Онлайн: {'✅' if node.get('isNodeOnline', node.get('isConnected', False)) else '❌'}\n"
+    message += f"  • Xray запущен: {'✅' if node.get('isXrayRunning', False) else '❌'}\n"
     message += f"  • Отслеживание трафика: {'✅' if node.get('isTrafficTrackingActive', False) else '❌'}\n\n"
 
     # Version Information

@@ -81,12 +81,24 @@ logger.error("Error logging enabled")
 sys.stdout.flush()
 sys.stderr.flush()
 
-from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filters
+from telegram.ext import Application, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 # Import modules
 from modules.handlers.core.conversation import create_conversation_handler
 from modules import localization  # noqa: F401 - ensure localization patches are loaded
 from modules.config import API_COOKIES
+
+
+async def handle_global_error(update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Global error handler for unexpected exceptions."""
+    logger.error("Unhandled exception while handling update", exc_info=context.error)
+    try:
+        if update and getattr(update, "callback_query", None):
+            await update.callback_query.answer("⚠️ Произошла ошибка. Попробуйте позже.")
+        if update and getattr(update, "effective_message", None):
+            await update.effective_message.reply_text("⚠️ Произошла ошибка. Попробуйте позже.")
+    except Exception as send_error:
+        logger.error(f"Failed to notify user about error: {send_error}")
 
 
 def main():
@@ -137,6 +149,9 @@ def main():
     conv_handler = create_conversation_handler()
     application.add_handler(conv_handler, group=0)
     logger.info("Conversation handler added successfully")
+
+    # Global error handler
+    application.add_error_handler(handle_global_error)
     
     # Run polling with retry logic
     max_retries = 10
