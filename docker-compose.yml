@@ -1,6 +1,6 @@
 services:
   remna-bot:
-    image: ghcr.io/dignezzz/remna-admin-bot:latest
+    image: ${REMNA_BOT_IMAGE:-ghcr.io/${GHCR_OWNER:-fadeinflames}/remna-admin-bot:${GHCR_TAG:-latest}}
     container_name: remna-telegram-bot-prod
     restart: unless-stopped
     env_file:

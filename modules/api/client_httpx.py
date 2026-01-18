@@ -4,7 +4,8 @@
 import httpx
 import logging
 import asyncio
-from modules.config import API_BASE_URL, API_TOKEN, API_COOKIES
+from modules.config import API_BASE_URL, API_TOKEN, API_COOKIES, API_TIMEOUT, API_VERIFY_SSL
+from modules.api.client import get_headers, RemnaAPI
 
 logger = logging.getLogger(__name__)
 
@@ -16,21 +17,13 @@ class RemnaAPIHttpx:
         """Выполнить HTTP запрос с httpx"""
         url = f"{API_BASE_URL}/{endpoint}"
         
-        headers = {
-            "Authorization": f"Bearer {API_TOKEN}",
-            "Content-Type": "application/json",
-            "User-Agent": "RemnaBot-httpx/1.0",
-            "Accept": "application/json",
-            # Поддельные заголовки реверс-прокси для обхода требования HTTPS
-            "X-Forwarded-Proto": "https",
-            "X-Forwarded-For": "127.0.0.1",
-            "X-Real-IP": "127.0.0.1"
-        }
+        headers = get_headers()
+        headers["User-Agent"] = "RemnaBot-httpx/1.1"
 
         # Настройки клиента для HTTP
         client_kwargs = {
-            "timeout": 30.0,
-            "verify": False,  # Отключаем SSL для HTTP
+            "timeout": API_TIMEOUT,
+            "verify": API_VERIFY_SSL,
             "headers": headers
         }
         
@@ -56,18 +49,7 @@ class RemnaAPIHttpx:
                 
                 if response.headers.get('content-type', '').startswith('application/json'):
                     json_response = response.json()
-                    
-                    # Обработка структуры ответа Remnawave API
-                    if isinstance(json_response, dict):
-                        if 'response' in json_response:
-                            return json_response['response']
-                        elif 'error' in json_response:
-                            logger.error(f"API returned error: {json_response['error']}")
-                            return None
-                        else:
-                            return json_response
-                    
-                    return json_response
+                    return RemnaAPI._unwrap_response_payload(json_response)
                 else:
                     text = response.text
                     logger.warning(f"Non-JSON response: {text[:200]}")

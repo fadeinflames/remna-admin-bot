@@ -1,7 +1,7 @@
 import httpx
 import logging
 import asyncio
-from modules.config import API_BASE_URL, API_TOKEN, API_COOKIES
+from modules.config import API_BASE_URL, API_TOKEN, API_COOKIES, API_TIMEOUT, API_VERIFY_SSL, API_PREFLIGHT
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +10,7 @@ def get_headers():
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "User-Agent": "RemnaBot/1.0",
+        "User-Agent": "RemnaBot/1.1",
         "Connection": "close"
     }
     if API_TOKEN:
@@ -20,8 +20,8 @@ def get_headers():
 def get_client_kwargs():
     """Get httpx client configuration"""
     client_kwargs = {
-        "timeout": 30.0,  # Reduced timeout for faster failure detection
-        "verify": True,  # Enable SSL verification for HTTPS
+        "timeout": API_TIMEOUT,  # Reduced timeout for faster failure detection
+        "verify": API_VERIFY_SSL,  # Enable SSL verification for HTTPS
         "headers": get_headers(),
         # More conservative connection limits to prevent exhaustion
         "limits": httpx.Limits(
@@ -55,12 +55,27 @@ class RemnaAPI:
             client_kwargs = get_client_kwargs()
             
             async with httpx.AsyncClient(**client_kwargs) as client:
-                response = await client.get(url, timeout=10.0, follow_redirects=True)
+                response = await client.get(url, timeout=min(10.0, API_TIMEOUT), follow_redirects=True)
                 logger.debug(f"Тест подключения: статус {response.status_code}, URL: {response.url}")
                 return response.status_code == 200
         except Exception as e:
             logger.debug(f"Тест подключения не прошел: {e}")
             return False
+
+    @staticmethod
+    def _unwrap_response_payload(payload):
+        """Normalize API response shapes into a consistent payload."""
+        if not isinstance(payload, dict):
+            return payload
+
+        if "response" in payload:
+            return payload.get("response")
+        if "data" in payload:
+            return payload.get("data")
+        if payload.get("success") is False and "error" in payload:
+            logger.error("API error payload: %s", payload.get("error"))
+            return None
+        return payload
     
     @staticmethod
     async def _make_request(method, endpoint, data=None, params=None, retry_count=3):
@@ -73,18 +88,15 @@ class RemnaAPI:
         
         for attempt in range(retry_count):
             try:
-                # Test connection on first attempt or after failures
-                if attempt == 0 or attempt > 0:
+                if API_PREFLIGHT and attempt == 0:
                     if not await RemnaAPI._test_connection():
-                        logger.warning(f"Тест подключения не прошел на попытке {attempt + 1}")
-                        if attempt < retry_count - 1:
-                            wait_time = 2 ** attempt
-                            logger.info(f"Ожидание {wait_time} секунд перед повторной попыткой...")
-                            await asyncio.sleep(wait_time)
-                            continue
-                        else:
-                            logger.error("Тест подключения не прошел на финальной попытке")
+                        logger.warning("Тест подключения не прошел, запрос отменен")
+                        if retry_count <= 1:
                             return None
+                        wait_time = 2
+                        logger.info(f"Ожидание {wait_time} секунд перед повторной попыткой...")
+                        await asyncio.sleep(wait_time)
+                        continue
                 
                 client_kwargs = get_client_kwargs()
                 logger.debug(f"Client config: {client_kwargs}")
@@ -111,6 +123,9 @@ class RemnaAPI:
                             continue
                     
                     response.raise_for_status()
+
+                    if response.status_code in (204, 205):
+                        return None
                     
                     # Проверка Content-Type
                     content_type = response.headers.get('content-type', '')
@@ -124,18 +139,7 @@ class RemnaAPI:
                         return None
                     
                     json_response = response.json()
-                    
-                    # Обработка структуры ответа Remnawave API
-                    if isinstance(json_response, dict):
-                        if 'response' in json_response:
-                            return json_response['response']
-                        elif 'error' in json_response:
-                            logger.error(f"API вернул ошибку: {json_response['error']}")
-                            return None
-                        else:
-                            return json_response
-                    
-                    return json_response
+                    return RemnaAPI._unwrap_response_payload(json_response)
                         
             except httpx.ConnectError as e:
                 logger.error(f"Ошибка подключения на попытке {attempt + 1}: {str(e)}")

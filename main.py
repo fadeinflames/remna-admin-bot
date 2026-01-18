@@ -86,6 +86,7 @@ from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filt
 # Import modules
 from modules.handlers.core.conversation import create_conversation_handler
 from modules import localization  # noqa: F401 - ensure localization patches are loaded
+from modules.config import API_COOKIES
 
 
 def main():
@@ -96,6 +97,7 @@ def main():
     
     # Check if required environment variables are set
     api_token = os.getenv("REMNAWAVE_API_TOKEN")
+    has_cookies = bool(API_COOKIES)
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     admin_user_ids = [int(id) for id in os.getenv("ADMIN_USER_IDS", "").split(",") if id]
     
@@ -107,11 +109,13 @@ def main():
     sys.stdout.flush()
     sys.stderr.flush()
 
-    if not api_token:
-        logger.error("Configure REMNAWAVE_API_TOKEN to allow the bot to access the panel API")
+    if not api_token and not has_cookies:
+        logger.error("Configure REMNAWAVE_API_TOKEN or REMNAWAVE_COOKIES to allow the bot to access the panel API")
         return
-
-    logger.info("Using API token authentication for Remnawave API")
+    if api_token:
+        logger.info("Using API token authentication for Remnawave API")
+    elif has_cookies:
+        logger.info("Using cookie authentication for Remnawave API")
 
     if not bot_token:
         logger.error("TELEGRAM_BOT_TOKEN environment variable is not set")

@@ -364,7 +364,7 @@ class InboundAPI:
                     'total': 0
                 }
             
-            enabled = sum(1 for user in users if user.get('status') == 'active')
+            enabled = sum(1 for user in users if InboundAPI._is_active_status(user.get('status')))
             disabled = len(users) - enabled
             
             return {

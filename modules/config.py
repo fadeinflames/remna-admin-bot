@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import json
+from urllib.parse import urlparse, urlunparse
 
 # Load environment variables
 load_dotenv()
@@ -51,8 +52,26 @@ if _raw_cookies and not API_COOKIES:
     logger.warning("Cookie configuration is set but no valid cookies were parsed.")
 
 # API Configuration
-API_BASE_URL = os.getenv("API_BASE_URL", "http://remnawave:3000/api")
+def _normalize_api_base_url(value: str) -> str:
+    """Normalize base URL and ensure the API path exists."""
+    raw = (value or "").strip()
+    if not raw:
+        return "http://remnawave:3000/api"
+    parsed = urlparse(raw)
+    path = (parsed.path or "").rstrip("/")
+    if not path:
+        path = "/api"
+    else:
+        path_parts = [part for part in path.split("/") if part]
+        if "api" not in path_parts:
+            path = f"{path}/api"
+    return urlunparse(parsed._replace(path=path))
+
+API_BASE_URL = _normalize_api_base_url(os.getenv("API_BASE_URL", "http://remnawave:3000/api"))
 API_TOKEN = os.getenv("REMNAWAVE_API_TOKEN")
+API_TIMEOUT = float(os.getenv("API_TIMEOUT", "30"))
+API_VERIFY_SSL = os.getenv("API_VERIFY_SSL", "true").lower() == "true"
+API_PREFLIGHT = os.getenv("API_PREFLIGHT", "false").lower() == "true"
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 

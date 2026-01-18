@@ -48,6 +48,7 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/DigneZzZ/remna-admi
 ```bash
 nano .env
 ```
+При необходимости укажите свой образ через `REMNA_BOT_IMAGE`.
 3) Запуск:
 ```bash
 docker compose up -d
@@ -73,8 +74,17 @@ python main.py
 - `TELEGRAM_BOT_TOKEN` — токен Telegram-бота
 - `API_BASE_URL` — базовый URL API Remnawave (например, `https://panel.example.com/api`)
 - `REMNAWAVE_API_TOKEN` — токен API (если используется авторизация по токену)
+- `REMNAWAVE_COOKIES` — cookie авторизация (если используется cookie)
 - `OPERATOR_USER_IDS` — список операторов с правами чтения (например, `789012345`)
 - `ADMIN_USER_IDS` — список ID админов через запятую (например, `123,456`)
+
+Дополнительно для Compose:
+- `REMNA_BOT_IMAGE` — образ для запуска (например, `ghcr.io/your-org/remna-admin-bot:latest`)
+
+API параметры:
+- `API_TIMEOUT` (секунды, по умолчанию 30)
+- `API_VERIFY_SSL` (true/false)
+- `API_PREFLIGHT` (true/false)
 
 Производительность/интерфейс:
 - `DASHBOARD_SHOW_SYSTEM_STATS` (true/false)
