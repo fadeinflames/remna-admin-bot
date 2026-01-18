@@ -1,6 +1,9 @@
 services:
   remna-bot:
     image: ${REMNA_BOT_IMAGE:-ghcr.io/${GHCR_OWNER:-fadeinflames}/remna-admin-bot:${GHCR_TAG:-latest}}
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: remna-telegram-bot-prod
     restart: unless-stopped
     env_file:
